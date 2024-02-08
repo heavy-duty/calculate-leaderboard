@@ -1,5 +1,5 @@
 {
-  "name": "leaderboard",
+  "name": "calculate-leaderboard",
   "$schema": "../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/src",
   "projectType": "library",
@@ -15,7 +15,7 @@
       }
     },
     "publish": {
-      "command": "node tools/scripts/publish.mjs leaderboard {args.ver} {args.tag}",
+      "command": "node tools/scripts/publish.mjs calculate-leaderboard {args.ver} {args.tag}",
       "dependsOn": ["build"]
     }
   },

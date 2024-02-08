@@ -1,1 +1,1 @@
-export * from './lib/leaderboard';
+export * from './lib/calculate-leaderboard';
