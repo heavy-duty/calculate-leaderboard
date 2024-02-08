@@ -23,7 +23,7 @@ describe('leaderboard', () => {
         date: new Date(Date.now()),
       },
     ];
-    const leaderboard: Leaderboard = calculateLeaderboard(achievements);
+    const leaderboard: Leaderboard = calculateLeaderboard([], achievements);
 
     expect(leaderboard.length).toBe(3);
     expect(leaderboard[0].userId).toBe('1');
@@ -52,7 +52,7 @@ describe('leaderboard', () => {
         date: new Date(Date.now()),
       },
     ];
-    const leaderboard: Leaderboard = calculateLeaderboard(achievements);
+    const leaderboard: Leaderboard = calculateLeaderboard([], achievements);
 
     expect(leaderboard.length).toBe(2);
     expect(leaderboard[0].userId).toBe('1');
@@ -75,46 +75,13 @@ describe('leaderboard', () => {
         date: new Date(now + 1),
       },
     ];
-    const leaderboard: Leaderboard = calculateLeaderboard(achievements);
+    const leaderboard: Leaderboard = calculateLeaderboard([], achievements);
 
     expect(leaderboard.length).toBe(2);
     expect(leaderboard[0].userId).toBe('1');
     expect(leaderboard[0].points).toBe(10);
     expect(leaderboard[1].userId).toBe('2');
     expect(leaderboard[1].points).toBe(10);
-  });
-
-  it('should maintain chronological order for tied points across different users.', () => {
-    const now = Date.now();
-    const achievements: Array<Achievement> = [
-      {
-        userId: '1',
-        points: 10,
-        date: new Date(now),
-      },
-      {
-        userId: '2',
-        points: 10,
-        date: new Date(now + 1),
-      },
-      {
-        userId: '2',
-        points: 5,
-        date: new Date(now + 2),
-      },
-      {
-        userId: '1',
-        points: 5,
-        date: new Date(now + 3),
-      },
-    ];
-    const leaderboard: Leaderboard = calculateLeaderboard(achievements);
-
-    expect(leaderboard.length).toBe(2);
-    expect(leaderboard[0].userId).toBe('2');
-    expect(leaderboard[0].points).toBe(15);
-    expect(leaderboard[1].userId).toBe('1');
-    expect(leaderboard[1].points).toBe(15);
   });
 
   it('should handle a large number of achievements efficiently', () => {
@@ -128,7 +95,7 @@ describe('leaderboard', () => {
       });
     }
     const startTime = performance.now();
-    const leaderboard = calculateLeaderboard(achievements);
+    const leaderboard = calculateLeaderboard([], achievements);
     const endTime = performance.now();
 
     expect(leaderboard.length).toBe(achievementsQuantity);
@@ -136,7 +103,7 @@ describe('leaderboard', () => {
     expect(endTime - startTime).toBeLessThan(1000); // Example threshold, adjust based on expectations
   });
 
-  it('should rigorously maintain chronological order with tight ties and simultaneous achievements', () => {
+  it('should maintain chronological order with tight ties and simultaneous achievements', () => {
     const now = Date.now();
     const achievements: Array<Achievement> = [
       { userId: '1', points: 8, date: new Date(now) },
@@ -159,7 +126,7 @@ describe('leaderboard', () => {
       { userId: '4', points: 1, date: new Date(now + 650) }, // User 4 slightly increases
       { userId: '5', points: 1, date: new Date(now + 650) }, // User 5 slightly increases
     ];
-    const leaderboard = calculateLeaderboard(achievements);
+    const leaderboard = calculateLeaderboard([], achievements);
 
     expect(leaderboard.length).toBe(6);
     expect(leaderboard[0].userId).toBe('2'); // First to reach 30 points
@@ -168,5 +135,40 @@ describe('leaderboard', () => {
     expect(leaderboard[3].userId).toBe('4'); // User 4 with 26 points, tied with User 5 but listed first arbitrarily due to simultaneous last achievement
     expect(leaderboard[4].userId).toBe('5'); // User 5 with 26 points, tied with User 4
     expect(leaderboard[5].userId).toBe('3'); // User 3 with 24 points
+  });
+
+  it('should handle incremental updates and maintains chronological order with ties', () => {
+    let oldLeaderboard: Leaderboard = [];
+
+    // First set of achievements
+    let achievements: Array<Achievement> = [
+      { userId: '1', points: 10, date: new Date('2023-01-01T00:00:00Z') },
+      { userId: '2', points: 15, date: new Date('2023-01-01T00:01:00Z') },
+    ];
+
+    // First update
+    oldLeaderboard = calculateLeaderboard(oldLeaderboard, achievements);
+    // Expected: User 2 first, then User 1
+    expect(oldLeaderboard[0].userId).toEqual('2');
+    expect(oldLeaderboard[0].points).toEqual(15);
+    expect(oldLeaderboard[1].userId).toEqual('1');
+    expect(oldLeaderboard[1].points).toEqual(10);
+
+    // Second set of achievements, including ties and a simultaneous achievement
+    achievements = [
+      { userId: '3', points: 20, date: new Date('2023-01-01T00:02:00Z') },
+      { userId: '4', points: 20, date: new Date('2023-01-01T00:02:00Z') },
+      { userId: '1', points: 5, date: new Date('2023-01-01T00:03:00Z') }, // Now User 1 has 15 points
+      { userId: '2', points: 5, date: new Date('2023-01-01T00:04:00Z') }, // Now User 2 has 20 points
+    ];
+
+    // Second update
+    oldLeaderboard = calculateLeaderboard(oldLeaderboard, achievements);
+    // Expected order: User 3 or User 4 first (based on ID if timestamp is identical), then User 2, and User 1
+    // Note: The exact order of User 3 and User 4 could vary based on how simultaneous ties are resolved.
+    expect(oldLeaderboard[0].points).toBe(20); // Either User 3 or User 4
+    expect(oldLeaderboard[1].points).toBe(20); // The other user
+    expect(oldLeaderboard[2].userId).toBe('2'); // User 2 updated later, so ranked after User 3 and User 4
+    expect(oldLeaderboard[3].userId).toBe('1'); // User 1 has 15 points, ranked last
   });
 });
